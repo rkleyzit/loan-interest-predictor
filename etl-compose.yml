@@ -1,0 +1,7 @@
+version: "3.9"
+services:
+  reference_rate_etl:
+    build:
+      context: .
+      dockerfile: ./etl/Dockerfile
+    command: python main.py
