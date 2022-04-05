@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Iterable
+from typing import Iterable, List
 import requests
 from bs4 import BeautifulSoup
 
@@ -12,13 +12,12 @@ from utils.models.forward_rate_run_batch import ForwardRateRunBatch
 class PensfordForwardRateEtl(ForwardRateEtl):
     def __init__(self):
         source = 'Pensford'
-        run_time = datetime.now()
-        super().__init__(source, run_time)
+        super().__init__(source)
 
         self.rates_api = 'https://www.pensford.com/resources/forward-curve'
 
     @staticmethod
-    def _fetch_rates_page() -> requests.Response:
+    def _fetch_rates_page() -> BeautifulSoup:
         """Fetch rates page from Pensford api"""
         rates_api = 'https://www.pensford.com/resources/forward-curve'
         resp = requests.get(rates_api)
@@ -26,10 +25,10 @@ class PensfordForwardRateEtl(ForwardRateEtl):
         if not resp.ok:
             raise Exception(f'Failed to fetch rates from {rates_api}')
 
-        return resp
+        return BeautifulSoup(resp.content, 'html.parser')
 
     @staticmethod
-    def _find_rates_tbl(page_soup: BeautifulSoup):
+    def _find_rates_tbl(page_soup: BeautifulSoup) -> BeautifulSoup:
         tbl = page_soup.find('table', {'id': 'curve-table'})
 
         if tbl is None:
@@ -64,8 +63,8 @@ class PensfordForwardRateEtl(ForwardRateEtl):
         return col_idx_map
 
     @staticmethod
-    def _yield_rates(tbl_soup: BeautifulSoup) -> Iterable:
-        """Generator to yield table rows as iterable in order of column index"""
+    def _yield_rates(tbl_soup: BeautifulSoup) -> List:
+        """Generator to yield table rows as list of values in order of column index"""
         body = tbl_soup.find('tbody')
 
         if body is None:
@@ -83,9 +82,7 @@ class PensfordForwardRateEtl(ForwardRateEtl):
         """Run ETL"""
         # fetch rate table
         rates_page = self._fetch_rates_page()
-        soup = BeautifulSoup(rates_page.content, 'html.parser')
-
-        tbl = self._find_rates_tbl(soup)
+        tbl = self._find_rates_tbl(rates_page)
 
         # identify the index of columns we're looking to persist
         target_cols = ('Reset Date', '1-month LIBOR', '1-month Term SOFR')
@@ -93,8 +90,8 @@ class PensfordForwardRateEtl(ForwardRateEtl):
 
         # create batch rows to record the current run
         # we want separate batches for each rate type because future rate sources may not contain both rates
-        libor_batch = ForwardRateRunBatch.create('LIBOR', self.source, self.run_time)
-        sofr_batch = ForwardRateRunBatch.create('SOFR', self.source, self.run_time)
+        libor_batch = ForwardRateRunBatch.create('LIBOR', self.source)
+        sofr_batch = ForwardRateRunBatch.create('SOFR', self.source)
 
         print('Inserting new batch:', libor_batch.to_dict())
         print('Inserting new batch:', sofr_batch.to_dict())

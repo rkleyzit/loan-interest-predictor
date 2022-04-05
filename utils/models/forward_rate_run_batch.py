@@ -20,12 +20,12 @@ class ForwardRateRunBatch(Model, Table):
     Index("forward_rate_run_batch_run_time_desc", batch_id, run_time.desc())
 
     @classmethod
-    def create(cls, reference_rate: str, source: str, run_time: datetime):
+    def create(cls, reference_rate: str, source: str):
         """Create and validate a new forward rate"""
         batch = ForwardRateRunBatch(
             reference_rate=reference_rate,
             source=source,
-            run_time=run_time
+            run_time=datetime.now()
         )
 
         batch.validate()
