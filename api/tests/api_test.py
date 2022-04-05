@@ -1,11 +1,11 @@
 from datetime import date
+from unittest import TestCase
 
-from utils.db_test_case import DbTestCase
 from utils.models.forward_rate import ForwardRate
 from api.routes.interest_rate_curve import LoanDetails, calculate_loan_interest_rate
 
 
-class EtlTest(DbTestCase):
+class EtlTest(TestCase):
     def setUp(self) -> None:
         self.sofr = ForwardRate.create(date(2022, 3, 28), 0.0031258, 1)
 
